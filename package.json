@@ -1,0 +1,10 @@
+{
+  "name": "rustabase-marketplace-templates",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": ["templates/*"],
+  "scripts": {
+    "build": "bun run build:all",
+    "build:all": "bun run --cwd templates/blog-cms build && bun run --cwd templates/pos-store build && bun run --cwd templates/saas-starter build && bun run --cwd templates/booking build"
+  }
+}

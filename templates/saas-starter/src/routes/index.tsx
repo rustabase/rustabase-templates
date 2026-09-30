@@ -1,0 +1,22 @@
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
+import { ArrowRight, Check } from "lucide-react";
+import { useState, type FormEvent } from "react";
+import { AppShell, Button, Card, Empty, ErrorState, Field, Loading, Notice } from "../../../../shared/ui";
+import { rustabase, text, type RecordRow } from "../../../../shared/rustabase";
+
+export const Route = createFileRoute("/")({ head: () => ({ meta: [
+  { title: "MetricFlow — The calm team workspace" }, { name: "description", content: "A focused workspace for growing teams." },
+  { property: "og:title", content: "MetricFlow — The calm team workspace" }, { property: "og:description", content: "A focused workspace for growing teams." },
+  { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
+] }), component: SaasPage });
+type Plan = RecordRow & { name?: string; price_monthly?: number; features?: string };
+type Team = RecordRow & { name?: string; slug?: string };
+function SaasPage() {
+  const queryClient = useQueryClient(); const [message, setMessage] = useState(""); const [busy, setBusy] = useState(false); const [authVersion, setAuthVersion] = useState(0);
+  const user = rustabase.session()?.record ?? null;
+  const plans = useQuery({ queryKey: ["plans"], queryFn: () => rustabase.list<Plan>("plans", { sort: "price_monthly" }) });
+  const teams = useQuery({ queryKey: ["teams", user?.id, authVersion], queryFn: () => rustabase.list<Team>("teams", { sort: "-created" }), enabled: Boolean(user) });
+  const createTeam = async (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); if (!user) return; const form = event.currentTarget; const data = new FormData(form); const name = text(data.get("name")).trim(); setBusy(true); setMessage(""); try { await rustabase.create("teams", { name, slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""), owner: user.id }); form.reset(); await queryClient.invalidateQueries({ queryKey: ["teams"] }); setMessage("Workspace created."); } catch (error) { setMessage(error instanceof Error ? error.message : "Could not create the workspace."); } finally { setBusy(false); } };
+  return <AppShell brand="MetricFlow" eyebrow="Team operations" theme="saas" auth onAuthChange={() => setAuthVersion((value) => value + 1)}><section><p className="eyebrow">One clear view</p><h1 className="display">Run your team without the busywork.</h1><p className="lede">Bring projects, priorities, and people into one calm workspace.</p><p><Button onClick={() => document.getElementById(user ? "workspace" : "pricing")?.scrollIntoView({ behavior: "smooth" })}>Get started <ArrowRight size={16} /></Button></p></section>{message ? <Notice tone={message.includes("created") ? "success" : "danger"} onClose={() => setMessage("")}>{message}</Notice> : null}{user ? <section id="workspace" className="section-gap"><div className="toolbar"><div><p className="eyebrow">Your workspace</p><h2 className="section-title">Teams</h2></div><form className="row" onSubmit={createTeam}><Field label="New team"><input name="name" placeholder="Team name" required /></Field><Button disabled={busy}>{busy ? "Creating…" : "Create team"}</Button></form></div>{teams.isPending ? <Loading label="Loading teams" /> : teams.error ? <ErrorState error={teams.error} retry={() => teams.refetch()} /> : teams.data.items.length === 0 ? <Empty title="Create your first team" detail="Your projects and teammates will live here." /> : <div className="grid">{teams.data.items.map((team) => <Card key={team.id}><span className="pill">Workspace</span><h3>{text(team.name)}</h3><p className="meta">/{text(team.slug)}</p></Card>)}</div>}</section> : <section id="pricing" className="section-gap"><div className="toolbar"><div><p className="eyebrow">Simple pricing</p><h2 className="section-title">Start small, grow smoothly</h2></div></div>{plans.isPending ? <Loading label="Loading plans" /> : plans.error ? <ErrorState error={plans.error} retry={() => plans.refetch()} /> : <div className="grid">{plans.data.items.map((plan) => <Card key={plan.id}><h3>{text(plan.name)}</h3><p><span className="price">${Number(plan.price_monthly || 0)}</span><span className="meta"> / month</span></p>{text(plan.features).split(",").filter(Boolean).map((feature) => <p className="row meta" key={feature}><Check size={15} />{feature.trim()}</p>)}</Card>)}</div>}</section>}</AppShell>;
+}

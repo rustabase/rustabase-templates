@@ -1,0 +1,13 @@
+{
+  "repo": "https://github.com/rustabase/rustabase-templates",
+  "branch": "main",
+  "templates": {
+    "blog-cms": { "rootDir": "templates/blog-cms" },
+    "pos-store": { "rootDir": "templates/pos-store" },
+    "saas-starter": { "rootDir": "templates/saas-starter" },
+    "booking": { "rootDir": "templates/booking" }
+  },
+  "framework": "static",
+  "buildCommand": "bun ../../scripts/build.mjs <backend-url>",
+  "outputDir": "dist"
+}
